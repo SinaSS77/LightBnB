@@ -60,18 +60,18 @@ exports.getUserWithId = getUserWithId;
  * @return {Promise<{}>} A promise to the user.
  */
 const addUser = function(user) {
-  let params = [user.name , user.password, user.email]
+  let params = [user.name, user.password, user.email];
   let queryString = `
   INSERT INTO users(name, password, email)
   VALUES ($1, $2, $3)
-  RETURNING *;`
+  RETURNING *;`;
 
-return pool.query(queryString, params)
-.then(res => res.rows[0])
-.catch(err => {
-  return console.log('querry err:', err);
- })
-}
+  return pool.query(queryString, params)
+    .then(res => res.rows[0])
+    .catch(err => {
+      return console.log('querry err:', err);
+    });
+};
 exports.addUser = addUser;
 
 /// Reservations
@@ -100,7 +100,7 @@ const getAllReservations = function(guest_id, limit = 10) {
   const values = [guest_id, limit];
   return pool.query(queryString, values)
     .then(res => res.rows)
-    .catch(err => { return console.log('query error:', err); })
+    .catch(err => { return console.log('query error:', err); });
 };
 exports.getAllReservations = getAllReservations;
 
@@ -119,53 +119,41 @@ const getAllProperties = function(options, limit = 10) {
   SELECT properties.*, avg(property_reviews.rating) as     average_rating
   FROM properties
   LEFT JOIN property_reviews ON properties.id = property_id
+  WHERE 1=1
   `;
 
   //checks for user input of city
   if (options.city) {
     queryParams.push(`%${options.city}%`);
-    queryString += `WHERE city LIKE $${queryParams.length} `;
+    queryString += `AND city LIKE $${queryParams.length} `;
   }
   //checks for user input of a specific owner id
   if (options.owner_id) {
     queryParams.push(options.owner_id);
-    if (queryParams.length === 1) {
-      queryString += `WHERE owner_id = $${queryParams.length} `;
-    } else {
-      queryString += `AND owner_id = $${queryParams.length} `;
-    }
+    queryString += `AND owner_id = $${queryParams.length} `;
   }
 
   if (options.minimum_price_per_night) {
     queryParams.push((options.minimum_price_per_night) * 100);
-    if (queryParams.length === 1) {
-      queryString += `WHERE cost_per_night >= $${queryParams.length} `;
-    } else {
-      queryString += `AND cost_per_night >= $${queryParams.length} `;
-    }
+    queryString += `AND cost_per_night >= $${queryParams.length} `;
   }
 
   if (options.maximum_price_per_night) {
     queryParams.push((options.maximum_price_per_night) * 100);
-    if (queryParams.length === 1) {
-      queryString += `WHERE cost_per_night <= $${queryParams.length} `;
-    } else {
-      queryString += `AND cost_per_night <= $${queryParams.length} `;
-    }
+    queryString += `AND cost_per_night <= $${queryParams.length} `;
   }
 
   if (options.minimum_rating) {
     queryParams.push(options.minimum_rating);
     queryString += `GROUP BY properties.id
-    HAVING avg(property_reviews.rating >= $${queryParams.length}) `;
+    HAVING avg(property_reviews.rating) >= $${queryParams.length} `;
   }
   queryParams.push(limit);
   queryString += `
-    GROUP BY properties.id
     ORDER BY cost_per_night
     LIMIT $${queryParams.length};
     `;
-
+// Pay attention: Since queryParams should be an array, we couldnt use object
   console.log(queryString, queryParams);
 
   return pool.query(queryString, queryParams)
@@ -181,10 +169,24 @@ exports.getAllProperties = getAllProperties;
  * @param {{}} property An object containing all of the property details.
  * @return {Promise<{}>} A promise to the property.
  */
-const addProperty = function(property) {
-  const propertyId = Object.keys(properties).length + 1;
-  property.id = propertyId;
-  properties[propertyId] = property;
-  return Promise.resolve(property);
-};
+const addProperty = function (property) {
+  let nameArray = [];
+  let userInput = [];
+  let placeNumberArray = [];
+  let counter = 1;
+  for (const [key, value] of Object.entries(property)) {
+    nameArray.push(key);
+    userInput.push(value);
+    placeNumberArray.push(`$${counter}`);
+    counter++;
+  }
+  const inputNames = nameArray.join(', ');
+  const valuePlaceholder = placeNumberArray.join(', ');
+
+  const queryString = `INSERT INTO properties (${inputNames}) VALUES(${valuePlaceholder})`
+  console.log(queryString);
+  return pool.query(queryString, userInput)
+    .then(res => res.rows)
+    .catch(err => { return console.log('promise error on addProperty:', err); });
+}
 exports.addProperty = addProperty;
