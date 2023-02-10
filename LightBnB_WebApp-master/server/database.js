@@ -2,7 +2,7 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   user: 'vagrant',
-  password: '123',
+  password: '123456',
   host: 'localhost',
   database: 'lightbnb'
 });
@@ -12,7 +12,7 @@ pool.query(
   .then(response => { });
 
 
-const properties = require('./json/properties.json');
+const properties = require('./json/properties.json');                     
 const users = require('./json/users.json');
 
 /// Users
@@ -145,15 +145,16 @@ const getAllProperties = function(options, limit = 10) {
 
   if (options.minimum_rating) {
     queryParams.push(options.minimum_rating);
-    queryString += `GROUP BY properties.id
-    HAVING avg(property_reviews.rating) >= $${queryParams.length} `;
+    queryString += `AND cost_per_night >= $${queryParams.length} `;
   }
+  
   queryParams.push(limit);
   queryString += `
+    GROUP BY properties.id
     ORDER BY cost_per_night
     LIMIT $${queryParams.length};
     `;
-// Pay attention: Since queryParams should be an array, we couldnt use object
+  // Pay attention: Since queryParams should be an array, we couldnt use object
   console.log(queryString, queryParams);
 
   return pool.query(queryString, queryParams)
@@ -169,7 +170,7 @@ exports.getAllProperties = getAllProperties;
  * @param {{}} property An object containing all of the property details.
  * @return {Promise<{}>} A promise to the property.
  */
-const addProperty = function (property) {
+const addProperty = function(property) {
   let nameArray = [];
   let userInput = [];
   let placeNumberArray = [];
@@ -183,10 +184,10 @@ const addProperty = function (property) {
   const inputNames = nameArray.join(', ');
   const valuePlaceholder = placeNumberArray.join(', ');
 
-  const queryString = `INSERT INTO properties (${inputNames}) VALUES(${valuePlaceholder})`
+  const queryString = `INSERT INTO properties (${inputNames}) VALUES(${valuePlaceholder})`;
   console.log(queryString);
   return pool.query(queryString, userInput)
     .then(res => res.rows)
     .catch(err => { return console.log('promise error on addProperty:', err); });
-}
+};
 exports.addProperty = addProperty;
