@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 
+//conection
 const pool = new Pool({
   user: 'vagrant',
   password: '123456',
